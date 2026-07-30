@@ -8,6 +8,9 @@
     "dev:auth": "node server/auth-server.mjs",
     "dev:server": "node server/webhook-proxy.mjs",
     "build": "vite build",
+    "start": "concurrently \"npm run start:auth\" \"npm run start:server\"",
+    "start:auth": "node server/auth-server.mjs",
+    "start:server": "node server/webhook-proxy.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
