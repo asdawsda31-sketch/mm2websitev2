@@ -10,9 +10,11 @@ export default function Login({ onSuccess }: { onSuccess: (token: string) => voi
   const [copied, setCopied] = useState(false);
 
   const generateCode = () => {
-    const words = ['Phoenix', 'Shadow', 'Nexus', 'Cipher', 'Vortex', 'Prism', 'Eclipse', 'Apex'];
-    const randomWord = words[Math.floor(Math.random() * words.length)];
-    return `StatusHub---${randomWord}`;
+    const adjectives = ['silent', 'swift', 'bright', 'mystic', 'golden', 'crimson', 'azure', 'vivid', 'fierce', 'serene'];
+    const nouns = ['phoenix', 'dragon', 'wolf', 'tiger', 'eagle', 'storm', 'flame', 'ocean', 'mountain', 'forest'];
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    return `${adj}${noun}${Math.floor(Math.random() * 9000 + 1000)}`;
   };
 
   const handleStartVerification = async (e: React.FormEvent) => {
