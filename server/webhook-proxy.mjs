@@ -2,9 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = Number(process.env.WEBHOOK_PORT || process.env.PORT || 4000);
+
+// Serve static files from Vite build
+app.use(express.static(path.join(__dirname, '../dist')));
 
 const webhookStore = new Map(); // id -> webhook URL
 const webhookCreators = new Map(); // id -> { userId, username, avatar, discordId }
@@ -579,6 +585,11 @@ app.use('/api/auth', async (req, res) => {
     console.error('Auth proxy error:', error);
     res.status(503).json({ message: 'Auth service unavailable' });
   }
+});
+
+// SPA fallback - serve index.html for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
