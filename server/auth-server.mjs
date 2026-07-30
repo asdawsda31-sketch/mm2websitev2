@@ -7,7 +7,10 @@ import geoip from 'geoip-lite';
 import { readFileSync } from 'node:fs';
 import { config } from 'dotenv';
 
-config({ path: '.env.local' });
+// Load .env.local only in development, not in production
+if (process.env.NODE_ENV !== 'production') {
+  config({ path: '.env.local' });
+}
 
 const app = express();
 const PORT = Number(process.env.PORT || 4001);
