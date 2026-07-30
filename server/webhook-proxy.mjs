@@ -570,21 +570,28 @@ app.post('/api/scripts/build', async (req, res) => {
   }
 });
 
-// Proxy auth server requests
-app.use('/api/auth', async (req, res) => {
-  try {
-    const authServerUrl = `http://127.0.0.1:4001${req.originalUrl}`;
-    const response = await fetch(authServerUrl, {
-      method: req.method,
-      headers: req.headers,
-      body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
-    });
-    const data = await response.json();
-    res.status(response.status).json(data);
-  } catch (error) {
-    console.error('Auth proxy error:', error);
-    res.status(503).json({ message: 'Auth service unavailable' });
-  }
+// Dev mode auth - skip Discord for now
+app.get('/api/auth/login', (req, res) => {
+  const token = crypto.randomBytes(32).toString('hex');
+  res.json({
+    success: true,
+    devMode: true,
+    token: token,
+    message: 'Dev mode login'
+  });
+});
+
+app.post('/api/auth/callback', (req, res) => {
+  const token = crypto.randomBytes(32).toString('hex');
+  res.json({
+    success: true,
+    token: token,
+    user: {
+      id: 'dev-user',
+      username: 'Developer',
+      avatar: null
+    }
+  });
 });
 
 // SPA fallback - serve index.html for client-side routing
