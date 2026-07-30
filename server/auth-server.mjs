@@ -13,7 +13,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const app = express();
-const PORT = Number(process.env.PORT || 4001);
+const PORT = Number(process.env.AUTH_PORT || 4001);
 
 // ── Config ──
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || 'test_client_id';

@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 const app = express();
-const PORT = Number(process.env.PORT || 4000);
+const PORT = Number(process.env.WEBHOOK_PORT || process.env.PORT || 4000);
 
 const webhookStore = new Map(); // id -> webhook URL
 const webhookCreators = new Map(); // id -> { userId, username, avatar, discordId }
