@@ -1,16 +1,30 @@
 import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
+import axios from 'axios';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { config } from 'dotenv';
+
+// Load env vars (dev only)
+if (process.env.NODE_ENV !== 'production') {
+  config({ path: '.env.local' });
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = Number(process.env.WEBHOOK_PORT || process.env.PORT || 4000);
 
+// Discord config
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI;
+const userSessions = new Map();
+
 // Serve static files from Vite build
 app.use(express.static(path.join(__dirname, '../dist')));
+app.use(express.json());
 
 const webhookStore = new Map(); // id -> webhook URL
 const webhookCreators = new Map(); // id -> { userId, username, avatar, discordId }
@@ -570,28 +584,67 @@ app.post('/api/scripts/build', async (req, res) => {
   }
 });
 
-// Dev mode auth - skip Discord for now
+// Discord OAuth Login
 app.get('/api/auth/login', (req, res) => {
-  const token = crypto.randomBytes(32).toString('hex');
-  res.json({
-    success: true,
-    devMode: true,
-    token: token,
-    message: 'Dev mode login'
-  });
+  if (!DISCORD_CLIENT_ID) {
+    const token = crypto.randomBytes(32).toString('hex');
+    userSessions.set(`user:${token}`, { userId: 'dev-user', username: 'TestUser', avatar: null });
+    return res.json({ success: true, devMode: true, token });
+  }
+
+  const state = crypto.randomBytes(16).toString('hex');
+  const scope = ['identify', 'email'].join('%20');
+  const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(DISCORD_REDIRECT_URI)}&scope=${scope}&state=${state}`;
+  userSessions.set(`state:${state}`, { createdAt: Date.now() });
+  res.json({ authUrl });
 });
 
-app.post('/api/auth/callback', (req, res) => {
-  const token = crypto.randomBytes(32).toString('hex');
-  res.json({
-    success: true,
-    token: token,
-    user: {
-      id: 'dev-user',
-      username: 'Developer',
-      avatar: null
-    }
-  });
+// Discord OAuth Callback
+app.post('/api/auth/callback', async (req, res) => {
+  const { code, state } = req.body;
+
+  if (!userSessions.has(`state:${state}`) || !code) {
+    return res.status(400).json({ message: 'Invalid state or code' });
+  }
+
+  try {
+    const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', {
+      client_id: DISCORD_CLIENT_ID,
+      client_secret: DISCORD_CLIENT_SECRET,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: DISCORD_REDIRECT_URI,
+    }, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+
+    const userResponse = await axios.get('https://discord.com/api/users/@me', {
+      headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` },
+    });
+
+    const discordUser = userResponse.data;
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+
+    userSessions.set(`user:${sessionToken}`, {
+      userId: discordUser.id,
+      username: discordUser.username,
+      email: discordUser.email,
+      avatar: discordUser.avatar,
+    });
+
+    userSessions.delete(`state:${state}`);
+
+    res.json({
+      success: true,
+      token: sessionToken,
+      user: {
+        id: discordUser.id,
+        username: discordUser.username,
+        avatar: discordUser.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Discord auth error:', error.message);
+    res.status(400).json({ message: 'Authentication failed' });
+  }
 });
 
 // SPA fallback - serve index.html for client-side routing
