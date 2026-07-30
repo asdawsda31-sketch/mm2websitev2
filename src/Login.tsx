@@ -10,7 +10,10 @@ export default function Login({ onSuccess }: { onSuccess: (token: string) => voi
     setError('');
 
     try {
-      const response = await fetch('http://127.0.0.1:4001/api/auth/login');
+      const apiBase = window.location.origin === 'http://localhost:5173'
+        ? 'http://127.0.0.1:4001'
+        : window.location.origin;
+      const response = await fetch(`${apiBase}/api/auth/login`);
       const data = await response.json();
 
       if (data.devMode && data.token) {
@@ -48,7 +51,10 @@ export default function Login({ onSuccess }: { onSuccess: (token: string) => voi
   const handleCallback = async (code: string, state: string) => {
     setLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:4001/api/auth/callback', {
+      const apiBase = window.location.origin === 'http://localhost:5173'
+        ? 'http://127.0.0.1:4001'
+        : window.location.origin;
+      const response = await fetch(`${apiBase}/api/auth/callback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, state }),
