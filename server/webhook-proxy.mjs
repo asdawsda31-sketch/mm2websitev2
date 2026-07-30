@@ -22,6 +22,12 @@ const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI;
 const userSessions = new Map();
 
+console.log('Discord Config:', {
+  CLIENT_ID: DISCORD_CLIENT_ID ? 'SET' : 'NOT SET',
+  SECRET: DISCORD_CLIENT_SECRET ? 'SET' : 'NOT SET',
+  REDIRECT_URI: DISCORD_REDIRECT_URI || 'NOT SET'
+});
+
 // Serve static files from Vite build
 app.use(express.static(path.join(__dirname, '../dist')));
 app.use(express.json());
