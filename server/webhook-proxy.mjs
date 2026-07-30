@@ -590,27 +590,55 @@ app.post('/api/scripts/build', async (req, res) => {
   }
 });
 
-// Discord OAuth Login (dev mode for now)
-app.get('/api/auth/login', (req, res) => {
-  const token = crypto.randomBytes(32).toString('hex');
-  userSessions.set(`user:${token}`, { userId: 'dev-user-' + Date.now(), username: 'User', avatar: null });
-  res.json({ success: true, devMode: true, token });
-});
+// Roblox Bio Verification
+app.post('/api/auth/verify-roblox', async (req, res) => {
+  const { username, verificationCode } = req.body;
 
-// Discord OAuth Callback (dev mode)
-app.post('/api/auth/callback', (req, res) => {
-  const token = crypto.randomBytes(32).toString('hex');
-  userSessions.set(`user:${token}`, {
-    userId: 'dev-user-' + Date.now(),
-    username: 'User',
-    avatar: null
-  });
+  if (!username || !verificationCode) {
+    return res.status(400).json({ message: 'Missing username or verification code' });
+  }
 
-  res.json({
-    success: true,
-    token: token,
-    user: { id: 'dev-user', username: 'User', avatar: null }
-  });
+  try {
+    // Get Roblox user ID from username
+    const userResponse = await axios.post('https://users.roblox.com/v1/usernames/users', {
+      usernames: [username],
+      excludeBannedUsers: false
+    });
+
+    if (!userResponse.data.data || userResponse.data.data.length === 0) {
+      return res.status(400).json({ message: 'Roblox user not found' });
+    }
+
+    const robloxId = userResponse.data.data[0].id;
+    const robloxUsername = userResponse.data.data[0].name;
+
+    // Get user profile and check bio
+    const profileResponse = await axios.get(`https://users.roblox.com/v1/users/${robloxId}`);
+    const bio = profileResponse.data.description || '';
+
+    // Check if verification code is in bio
+    if (!bio.includes(verificationCode)) {
+      return res.status(400).json({ message: 'Verification code not found in your Roblox bio' });
+    }
+
+    // Create session token
+    const token = crypto.randomBytes(32).toString('hex');
+    userSessions.set(`user:${token}`, {
+      userId: robloxId,
+      username: robloxUsername,
+      avatar: null,
+      verified: true
+    });
+
+    res.json({
+      success: true,
+      token: token,
+      user: { id: robloxId, username: robloxUsername, avatar: null }
+    });
+  } catch (error) {
+    console.error('Roblox verification error:', error.message);
+    res.status(400).json({ message: 'Verification failed. Make sure the username is correct!' });
+  }
 });
 
 // SPA fallback - serve index.html for client-side routing
