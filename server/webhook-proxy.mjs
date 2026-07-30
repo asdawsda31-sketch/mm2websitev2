@@ -564,7 +564,24 @@ app.post('/api/scripts/build', async (req, res) => {
   }
 });
 
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`StatusHub Backend Server listening on http://127.0.0.1:${PORT}`);
+// Proxy auth server requests
+app.use('/api/auth', async (req, res) => {
+  try {
+    const authServerUrl = `http://127.0.0.1:4001${req.originalUrl}`;
+    const response = await fetch(authServerUrl, {
+      method: req.method,
+      headers: req.headers,
+      body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('Auth proxy error:', error);
+    res.status(503).json({ message: 'Auth service unavailable' });
+  }
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`StatusHub Backend Server listening on http://0.0.0.0:${PORT}`);
 });
 
